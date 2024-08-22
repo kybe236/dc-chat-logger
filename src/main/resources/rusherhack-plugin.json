@@ -1,0 +1,12 @@
+{
+  "Plugin-Class": "org.kybe.Main",
+  "Name": "dc chat logger",
+  "Version": "${plugin_version}",
+  "Description": "Chat messages inside of discord",
+  "Authors": [
+    "kybe236"
+  ],
+  "Minecraft-Versions": [
+    "1.21"
+  ]
+}
