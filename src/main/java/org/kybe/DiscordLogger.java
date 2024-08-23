@@ -188,7 +188,7 @@ public class DiscordLogger extends ToggleableModule {
 			String body = "{\"embeds\": [{\"title\": \"" + player + " mentioned\",\"description\": \"" + msg + "\",\"color\": \"" + c + "\"";
 
 			String baseurl = ",\"thumbnail\": {\"url\":\"https://mc-heads.net";
-			String normalend = "\"}]}";
+			String normalend = "}]}";
 			String end = "\"}}]}";
 
 			if (avatar.getValue()) {

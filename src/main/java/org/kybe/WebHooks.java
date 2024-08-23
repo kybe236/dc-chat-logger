@@ -7,8 +7,6 @@ import org.rusherhack.client.api.utils.ChatUtils;
 import org.rusherhack.core.command.annotations.CommandExecutor;
 import org.rusherhack.core.setting.StringSetting;
 
-import java.beans.ConstructorProperties;
-
 public class WebHooks extends Command {
 
 	public WebHooks() {
