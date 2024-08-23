@@ -199,7 +199,7 @@ public class DiscordLogger extends ToggleableModule {
 	public void sendHookFromPlayer(String player,UUID uuid ,String msg, String weebhook) {
 		try {
 			int c = (color.getRed() << 16) + (color.getGreen() << 8) + (color.getBlue());
-			String body = "{\"embeds\": [{\"title\": \"" + player + "(" + uuid + ") said\",\"description\": \"" + msg + "\",\"color\": \"" + c + "\"";
+			String body = "{\"embeds\": [{\"title\": \"" + player + " (" + uuid + ") said\",\"description\": \"" + msg + "\",\"color\": \"" + c + "\"";
 
 			String baseurl = ",\"thumbnail\": {\"url\":\"https://mc-heads.net";
 			String normalend = "}]}";
