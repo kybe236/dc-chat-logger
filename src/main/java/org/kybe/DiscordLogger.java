@@ -147,7 +147,14 @@ public class DiscordLogger extends ToggleableModule {
 			if (this.option.getValue() == OptionEnum.All) {
 				String finalSender_name = sender_name;
 				CompletableFuture.runAsync(() -> {
-					String[] weebhooks = this.weebHook.getValue().split(",");
+					String[] weebhooks;
+					if (this.weebHook.getValue().isEmpty()) {
+						return;
+					} else if (this.weebHook.getValue().contains(",")) {
+						weebhooks = this.weebHook.getValue().split(",");
+					} else {
+						weebhooks = new String[]{this.weebHook.getValue()};
+					}
 					for (String weebhook : weebhooks) {
 						weebhook = weebhook.trim();
 						sendHookFromPlayer(finalSender_name, sender_uuid ,contents, weebhook);
@@ -169,7 +176,15 @@ public class DiscordLogger extends ToggleableModule {
 					if (sender_name.toLowerCase().equals(player)) {
 						String finalSender_name = sender_name;
 						CompletableFuture.runAsync(() -> {
-							String[] weebhooks = this.weebHook.getValue().split(",");
+							String[] weebhooks;
+							if (this.weebHook.getValue().isEmpty()) {
+								return;
+							} else if (this.weebHook.getValue().contains(",")) {
+								weebhooks = this.weebHook.getValue().split(",");
+							} else {
+								weebhooks = new String[]{this.weebHook.getValue()};
+							}
+
 							for (String weebhook : weebhooks) {
 								weebhook = weebhook.trim();
 								sendHookFromPlayer(finalSender_name, sender_uuid ,contents, weebhook);
@@ -221,9 +236,6 @@ public class DiscordLogger extends ToggleableModule {
 	}
 
 	private void makeAndSendHook(int c, String body, String weebhook) throws IOException {
-		this.getLogger().debug("Color: " + c);
-		this.getLogger().debug("Red: " + color.getRed() + " Green: " + color.getGreen() + " Blue: " + color.getBlue());
-
 		HttpsURLConnection connection = (HttpsURLConnection) new URL(weebhook).openConnection();
 		connection.addRequestProperty("Content-Type", "application/json");
 		connection.addRequestProperty("User-Agent", "kybe236/2.3.6");
