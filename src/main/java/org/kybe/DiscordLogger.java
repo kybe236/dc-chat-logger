@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
+import org.rusherhack.client.api.events.client.chat.EventAddChat;
 import org.rusherhack.client.api.events.network.EventPacket;
 import org.rusherhack.client.api.feature.module.ModuleCategory;
 import org.rusherhack.client.api.feature.module.ToggleableModule;
@@ -23,7 +24,6 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BooleanSupplier;
 
 
 /**
@@ -40,6 +40,20 @@ public class DiscordLogger extends ToggleableModule {
 		Specific,
 	}
 
+	private final BooleanSetting chatSigning = new BooleanSetting("Chat Signing", "acount for chat signing?", true).onChange(
+			newv -> {
+				if (newv) {
+					this.startIdentifier.setHidden(true);
+					this.endIdentifier.setHidden(true);
+				} else {
+					this.startIdentifier.setHidden(false);
+					this.endIdentifier.setHidden(false);
+				}
+			});
+	private final StringSetting startIdentifier = new StringSetting("Start Identifier", "Start of the message", "<");
+	private final StringSetting endIdentifier = new StringSetting("End Identifier", "End of the message", ">");
+	private final StringSetting startMessageIdentifier = new StringSetting("Start Message Identifier", "Start of the message", ": ");
+
 	private final EnumSetting<OptionEnum> option = new EnumSetting<>("Mode", "Wich mode to use", OptionEnum.All);
 	private final StringSetting players = new StringSetting("Players", "Wich players should be watched , seperated", "");
 	private final ColorSetting color = new ColorSetting("Webhook Color", "Webhook color", new Color(255, 0, 0, 255));
@@ -48,7 +62,7 @@ public class DiscordLogger extends ToggleableModule {
 	private final StringSetting weebHook = new StringSetting("Webhooks", "Weebhook displayed with *", "") {
 		@Override
 		public String getDisplayValue() {
-			return ((this.getValue().isEmpty()) ? "0" : String.valueOf(this.getValue().split(",").length));
+			return (this.getValue().isEmpty()) ? "0" : "1";
 		}
 	};
 
@@ -74,21 +88,7 @@ public class DiscordLogger extends ToggleableModule {
 	public final BooleanSetting nohelm = new BooleanSetting("No Helm", "Show the avatar without the helmet", false);
 	public final EnumSetting<AvatarEnum> avatarType = new EnumSetting<>("Type", "Type of the avatar", AvatarEnum.HEAD)
 			.onChange(newv -> {
-				if (newv == AvatarEnum.BODY) {
-					this.bodylr.setVisibility(new BooleanSupplier() {
-						@Override
-						public boolean getAsBoolean() {
-							return true;
-						}
-					});
-				} else {
-					this.bodylr.setVisibility(new BooleanSupplier() {
-						@Override
-						public boolean getAsBoolean() {
-							return false;
-						}
-					});
-				}
+				this.bodylr.setHidden(newv != AvatarEnum.BODY);
 			});
 	public final EnumSetting<BodyEnum> bodylr = new EnumSetting<>("Orientation", "Where the player is facing", BodyEnum.LEFT);
 
@@ -107,6 +107,10 @@ public class DiscordLogger extends ToggleableModule {
 
 		//register settings
 		this.registerSettings(
+				this.chatSigning,
+				this.startIdentifier,
+				this.endIdentifier,
+				this.startMessageIdentifier,
 				this.option,
 				this.players,
 				this.color,
@@ -118,13 +122,11 @@ public class DiscordLogger extends ToggleableModule {
 
 	HashMap<UUID, String> playerCache = new HashMap<>();
 
-	private boolean pauseListener = false;
-
 	@Subscribe
 	public void onPacket(EventPacket.Receive event) {
 		if (event.getPacket() instanceof ClientboundPlayerChatPacket packet) {
+			if (!this.chatSigning.getValue()) return;
 			if (Minecraft.getInstance().player == null) return;
-			Minecraft mc = Minecraft.getInstance();
 
 			String contents = packet.body().content();
 			UUID sender_uuid = packet.sender();
@@ -132,7 +134,7 @@ public class DiscordLogger extends ToggleableModule {
 				return;
 			}
 
-			String sender_name = "ERROR";
+			String sender_name;
 			if (!playerCache.containsKey(sender_uuid)) {
 				sender_name = fetchProfile(sender_uuid.toString());
 				if (sender_name == null) {
@@ -193,6 +195,117 @@ public class DiscordLogger extends ToggleableModule {
 					}
 				}
 			}
+		}
+	}
+
+	@Subscribe
+	public void onMessageAdd(EventAddChat event) {
+		if (this.chatSigning.getValue()) return;
+		if (Minecraft.getInstance().player == null) return;
+		Minecraft mc = Minecraft.getInstance();
+
+		int firstIndex = event.getChatComponent().getString().indexOf(this.startIdentifier.getValue());
+		int lastIndex = event.getChatComponent().getString().indexOf(this.endIdentifier.getValue());
+		if (firstIndex == -1 || lastIndex == -1) {
+			return;
+		}
+
+		int messageIndex = event.getChatComponent().getString().indexOf(this.startMessageIdentifier.getValue());
+		if (messageIndex == -1) {
+			return;
+		}
+
+		String senderName = event.getChatComponent().getString().substring(firstIndex + this.startIdentifier.getValue().length(), lastIndex);
+		String message = event.getChatComponent().getString().substring(messageIndex + this.startMessageIdentifier.getValue().length());
+
+		if (this.option.getValue() == OptionEnum.All) {
+			CompletableFuture.runAsync(() -> {
+				String[] weebhooks;
+				if (this.weebHook.getValue().isEmpty()) {
+					return;
+				} else if (this.weebHook.getValue().contains(",")) {
+					weebhooks = this.weebHook.getValue().split(",");
+				} else {
+					weebhooks = new String[]{this.weebHook.getValue()};
+				}
+				for (String weebhook : weebhooks) {
+					weebhook = weebhook.trim();
+					sendHookFromPlayerWithoutUUID(senderName, message, weebhook);
+				}
+			});
+		} else {
+			String[] players;
+			if (this.players.getValue().isEmpty()) {
+				return;
+			} else {
+				if (this.players.getValue().contains(",")) {
+					players = this.players.getValue().split(",");
+				} else {
+					players = new String[]{this.players.getValue()};
+				}
+			}
+			for (String player : players) {
+				player = player.trim().toLowerCase();
+
+				if (senderName.toLowerCase().equals(player)) {
+					String finalSender_name = senderName;
+					CompletableFuture.runAsync(() -> {
+						String[] weebhooks;
+						if (this.weebHook.getValue().isEmpty()) {
+							return;
+						} else if (this.weebHook.getValue().contains(",")) {
+							weebhooks = this.weebHook.getValue().split(",");
+						} else {
+							weebhooks = new String[]{this.weebHook.getValue()};
+						}
+
+						for (String weebhook : weebhooks) {
+							weebhook = weebhook.trim();
+							sendHookFromPlayerWithoutUUID(finalSender_name, message, weebhook);
+						}
+					});
+					break;
+				}
+			}
+		}
+	}
+
+
+	public void sendHookFromPlayerWithoutUUID(String player,String msg, String weebhook) {
+		try {
+			int c = (color.getRed() << 16) + (color.getGreen() << 8) + (color.getBlue());
+			String body = "{\"embeds\": [{\"title\": \"" + player + " said\",\"description\": \"" + msg + "\",\"color\": \"" + c + "\"";
+
+			String baseurl = ",\"thumbnail\": {\"url\":\"https://mc-heads.net";
+			String normalend = "}]}";
+			String end = "\"}}]}";
+
+			if (avatar.getValue()) {
+				body += baseurl;
+				switch (avatarType.getValue()) {
+					case HEAD -> body += "/head";
+					case BODY -> body += "/body";
+					case PLAYER -> body += "/player";
+					case COMBO -> body += "/combo";
+					case SKIN -> body += "/skin";
+				}
+				body += "/" + player;
+				body += "/" + avatarSize.getValue();
+				if (nohelm.getValue()) body += "/nohelm";
+				if (avatarType.getValue() == AvatarEnum.BODY) {
+					switch (bodylr.getValue()) {
+						case LEFT -> body += "/left";
+						case RIGHT -> body += "/right";
+					}
+				}
+				body += end;
+			} else {
+				body += normalend;
+			}
+
+			makeAndSendHook(c, body, weebhook);
+		} catch (Exception e) {
+			this.getLogger().error("Failed to send webhook", e);
 		}
 	}
 

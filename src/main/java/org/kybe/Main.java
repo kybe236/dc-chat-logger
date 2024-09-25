@@ -3,6 +3,8 @@ package org.kybe;
 import org.rusherhack.client.api.RusherHackAPI;
 import org.rusherhack.client.api.plugin.Plugin;
 
+import static org.rusherhack.client.api.Globals.mc;
+
 
 /**
  * Dc Logger
@@ -18,12 +20,10 @@ public class Main extends Plugin {
 		RusherHackAPI.getModuleManager().registerFeature(discordLogger);
 
 		final WebHooks webhooks = new WebHooks();
-		RusherHackAPI.getCommandManager().registerFeature(webhooks);
-	}
-	
+		RusherHackAPI.getCommandManager().registerFeature(webhooks);}
+
 	@Override
 	public void onUnload() {
-		this.getLogger().info("[] unloaded!");
+		this.logger.info("Unloading Discord Logger");
 	}
-	
 }
